@@ -12,20 +12,16 @@ app.Map("/ws", async context =>
         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
 
         var webSocketHandler = new WebSocketHandler(webSocket);
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                await webSocketHandler.HandleAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-        });
+            await webSocketHandler.HandleAsync();
+        }
+        catch (Exception e)
+        {
+            throw new Exception(e.Message);
+        }
     }
 });
-
 app.UseWebSockets();
 
 

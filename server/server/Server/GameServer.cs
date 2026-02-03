@@ -6,7 +6,7 @@ public sealed class GameServer
 {
     private GameServer() {}
     private static GameServer? _instance;
-    private Dictionary<WebSocketHandler,Player> _players;
+    private Dictionary<WebSocketHandler,Player> _players = new Dictionary<WebSocketHandler, Player>();
     
     public static GameServer GetInstance()
     {
@@ -17,13 +17,13 @@ public sealed class GameServer
         return _instance;
     }
 
-    public async Task HandlePlayer(WebSocketHandler webSocketHandler, Message message)
+    public async Task HandlePlayer(WebSocketHandler webSocketHandler, ClientMessage message)
     {
         try
         {
-            if (message.Type == MessageType.JOIN)
+            if (message.Type == ClientMessageType.JOIN)
             {
-                HandleJoin(webSocketHandler, message);
+                await HandleJoin(webSocketHandler, message);
                 return;
             }
             
@@ -35,22 +35,21 @@ public sealed class GameServer
             
             switch (message.Type)
             {
-                case MessageType.MESSAGE:
-                    HandleMessage(webSocketHandler, message);
+                case ClientMessageType.MESSAGE:
+                    await HandleMessage(webSocketHandler, message);
                     break;
-                case MessageType.QUIT:
+                case ClientMessageType.QUIT:
                     await HandleQuit(webSocketHandler);
                     break;
             }
         }
         catch (Exception ex)
         {
-            webSocketHandler.SendError(ex.Message);
+            await webSocketHandler.SendErrorAsync(ex.Message);
         }
-
     }
     
-    private async Task HandleJoin(WebSocketHandler webSocketHandler, Message message)
+    private async Task HandleJoin(WebSocketHandler webSocketHandler, ClientMessage message)
     {
         if (_players.TryGetValue(webSocketHandler, out var oldPlayer))
         {
@@ -62,8 +61,20 @@ public sealed class GameServer
         _players.Add(webSocketHandler,player);
     }
     
-    private async Task HandleMessage(WebSocketHandler webSocketHandler, Message message)
+    private async Task HandleMessage(WebSocketHandler webSocketHandler, ClientMessage message)
     {
+        var sender = _players.FirstOrDefault(k => k.Key == webSocketHandler).Value;
+        var recievers =  _players.Keys.Where(key => key != webSocketHandler);
+        var serverMessage = new ServerMessage
+        {
+            Type = ServerMessageType.PLAYERMESSAGE,
+            Content =  sender.Name+ " : " + message.Content,
+        };
+        foreach (var reciever in recievers)
+        {
+            //if(reciever.isOpen)
+            await reciever.SendMessageAsync(serverMessage);
+        }
     }
 
 
@@ -71,7 +82,7 @@ public sealed class GameServer
     {
         if (!_players.TryGetValue(webSocketHandler, out var player))
         {
-            webSocketHandler.SendError("Join first");
+            webSocketHandler.SendErrorAsync("Join first");
         }
         
     }

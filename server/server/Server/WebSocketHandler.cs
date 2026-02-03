@@ -29,7 +29,7 @@ public async Task HandleAsync()
                 }
 
                 var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                var message = JsonSerializer.Deserialize<Message>(json);
+                var message = JsonSerializer.Deserialize<ClientMessage>(json);
 
                 GameServer gameServer = GameServer.GetInstance();
 
@@ -37,29 +37,27 @@ public async Task HandleAsync()
             }
             catch (Exception ex)
             {
-                SendError(ex.Message);
+                SendErrorAsync(ex.Message);
             }
-            _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
         }
-        _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
-
     }
 
-    public async Task SendMessageAsync(string message)
+    public async Task SendMessageAsync(ServerMessage serverMessage)
     {
-        var bytes = Encoding.UTF8.GetBytes(message);
+        var json = JsonSerializer.Serialize(serverMessage);
+        var bytes = Encoding.UTF8.GetBytes(json);
         if (_webSocket.State == WebSocketState.Open)
         {
             await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
 
-    public async Task SendError(string message)
+    public async Task SendErrorAsync(string errorMessage)
     {
-        var json = JsonSerializer.Serialize(new
+        var json = JsonSerializer.Serialize(new ServerMessage
         {
-            type = "error",
-            error = message
+            Type = ServerMessageType.ERROR,
+            Content = errorMessage
         });
         var bytes = Encoding.UTF8.GetBytes(json);
         _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);    }
