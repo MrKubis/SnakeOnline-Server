@@ -41,6 +41,8 @@ public async Task HandleAsync()
             }
             _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
         }
+        _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+
     }
 
     public async Task SendMessageAsync(string message)
