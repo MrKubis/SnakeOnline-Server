@@ -7,7 +7,8 @@ public sealed class GameServer
     private GameServer() {}
     private static GameServer? _instance;
     private Dictionary<WebSocketHandler,Player> _players = new Dictionary<WebSocketHandler, Player>();
-    
+    private List<Player> _waitlist = new List<Player>();
+    private List<GameRoom> _gamerooms = new List<GameRoom>();
     public static GameServer GetInstance()
     {
         if (_instance == null)
@@ -59,6 +60,7 @@ public sealed class GameServer
         Player player = new Player(webSocketHandler,message.Content);
         
         _players.Add(webSocketHandler,player);
+        await AddToWaitList(player);
     }
     
     private async Task HandleMessage(WebSocketHandler webSocketHandler, ClientMessage message)
@@ -77,6 +79,32 @@ public sealed class GameServer
         }
     }
 
+    private async Task AddToWaitList(Player player)
+    {
+        _waitlist.Add(player);
+        TryMatch();
+    }
+
+    private async Task TryMatch()
+    {
+        while (_waitlist.Count >= 2 )
+        {
+            Player p1 = _waitlist.First();
+            _waitlist.RemoveAt(0);
+            Player p2 = _waitlist.First();
+            _waitlist.RemoveAt(0);
+
+            GameRoom newRoom = new GameRoom(p1, p2);
+            _gamerooms.Add(newRoom);
+
+            _ = Task.Run(async () =>
+            {
+                await p1.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GAMEJOIN });
+                await p2.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GAMEJOIN });
+                await newRoom.StartGame();
+            });
+        }
+    }
 
     private async Task HandleQuit(WebSocketHandler webSocketHandler)
     {
@@ -84,6 +112,11 @@ public sealed class GameServer
         {
             webSocketHandler.SendErrorAsync("Join first");
         }
+        
+    }
+
+    public async Task EndGame(GameRoom gameRoom)
+    {
         
     }
 }
