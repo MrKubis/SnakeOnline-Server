@@ -70,14 +70,13 @@ public class Game
 
     public void InitializeFruits()
     {
-        //for p1
         int x1 = _random.Next(0, _width/2);
         int y1 = _random.Next(0, _height);
         
         int x2 = _random.Next(_width/2, _width);
         int y2 = _random.Next(0, _height);
-            _map[y1][x1] = CellType.Fruit; 
-            _map[y2][x2] = CellType.Fruit; 
+        _map[y1][x1] = CellType.Fruit; 
+        _map[y2][x2] = CellType.Fruit; 
     }
     public void InitializeFruit()
     {
@@ -193,7 +192,6 @@ public class Game
         if (IsSamePosition(nextPos1, nextPos2))
         {
             GameOver(null);
-            
         }
 
         if (_map[nextPos1.Y][nextPos1.X] == CellType.Snake
@@ -240,8 +238,10 @@ public class Game
     }
     private void EatFruit(List<SnakeBody> snake)
     {
-        
+        var head = snake.First();
+        _map[head.Y][head.X] = CellType.Empty;
     }
+    
     private void GrowSnake(List<SnakeBody> snake, int lastX, int lastY)
     {
         snake.Add(new SnakeBody{X = lastX, Y = lastY});

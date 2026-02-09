@@ -16,7 +16,6 @@ public class GameRoom(Player p1, Player p2)
     private Timer _gameTimer { get; set; }
     public async Task StartGame()
     {
-        var gameServer = GameServer.GetInstance();
         await _p1.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameStart });
         await _p2.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameStart });
 
@@ -24,7 +23,8 @@ public class GameRoom(Player p1, Player p2)
         _game = new Game.Game(_p1,_p2,20,20);
         _game.GenerateMap();
         _game.InitializeSnakes();
-
+        _game.InitializeFruits();
+        
         _gameTimer = new Timer(Update, null, 0, 2000);
     }
 
