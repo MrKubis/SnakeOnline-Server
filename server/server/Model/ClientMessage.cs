@@ -7,18 +7,18 @@ namespace server.Model;
 public class ClientMessage
 {
     public ClientMessageType Type { get; set; }
-    public string Content { get; set; }
+    public string? Content { get; set; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ClientMessageType
 {
-    [EnumMember(Value = "JOIN")]
-    JOIN,
-    [EnumMember(Value = "QUIT")]
-    QUIT,
-    [EnumMember(Value = "MOVE")]
-    MOVE,
-    [EnumMember(Value = "MESSAGE")]
-    MESSAGE
+    [EnumMember(Value = "Join")]
+    Join,
+    [EnumMember(Value = "Quit")]
+    Quit,
+    [EnumMember(Value = "Move")]
+    Move,
+    [EnumMember(Value = "Message")]
+    Message
 }

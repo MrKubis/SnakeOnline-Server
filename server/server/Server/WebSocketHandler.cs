@@ -37,7 +37,7 @@ public async Task HandleAsync()
             }
             catch (Exception ex)
             {
-                SendErrorAsync(ex.Message);
+                await SendErrorAsync(ex.Message);
             }
         }
     }
@@ -56,9 +56,9 @@ public async Task HandleAsync()
     {
         var json = JsonSerializer.Serialize(new ServerMessage
         {
-            Type = ServerMessageType.ERROR,
+            Type = ServerMessageType.Error,
             Content = errorMessage
         });
         var bytes = Encoding.UTF8.GetBytes(json);
-        _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);    }
+        await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);    }
 }

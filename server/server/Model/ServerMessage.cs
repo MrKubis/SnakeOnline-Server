@@ -7,11 +7,12 @@ public class ServerMessage
 }
 public enum ServerMessageType
 {
-    PLAYERMESSAGE,
-    GAMEJOIN,
-    GAMESTART,
-    GAMESTOP,
-    BOARDUPDATE,
-    MESSAGE,
-    ERROR
+    PlayerMessage,
+    GameJoin,
+    GameStart,
+    GameStop,
+    BoardUpdate,
+    Message,
+    Error,
+    Quit
 }

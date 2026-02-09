@@ -1,3 +1,4 @@
+using server.Game;
 using server.Model;
 
 namespace server.Server;
@@ -7,14 +8,11 @@ public sealed class GameServer
     private GameServer() {}
     private static GameServer? _instance;
     private Dictionary<WebSocketHandler,Player> _players = new Dictionary<WebSocketHandler, Player>();
-    private List<Player> _waitlist = new List<Player>();
-    private List<GameRoom> _gamerooms = new List<GameRoom>();
+    private readonly List<Player> _waitlist = new List<Player>();
+    private List<GameRoom> _gameRooms = new List<GameRoom>();
     public static GameServer GetInstance()
     {
-        if (_instance == null)
-        {
-            _instance = new GameServer();
-        }
+        _instance ??= new GameServer();
         return _instance;
     }
 
@@ -22,7 +20,7 @@ public sealed class GameServer
     {
         try
         {
-            if (message.Type == ClientMessageType.JOIN)
+            if (message.Type == ClientMessageType.Join)
             {
                 await HandleJoin(webSocketHandler, message);
                 return;
@@ -36,11 +34,17 @@ public sealed class GameServer
             
             switch (message.Type)
             {
-                case ClientMessageType.MESSAGE:
-                    await HandleMessage(webSocketHandler, message);
+                case ClientMessageType.Move:
+                    if (player.Room != null)
+                    {
+                        HandleMove(player,message);
+                    }
                     break;
-                case ClientMessageType.QUIT:
-                    await HandleQuit(webSocketHandler);
+                case ClientMessageType.Message:
+                    await HandleMessage(player, message);
+                    break;
+                case ClientMessageType.Quit:
+                    await HandleQuit(player);
                     break;
             }
         }
@@ -49,6 +53,26 @@ public sealed class GameServer
             await webSocketHandler.SendErrorAsync(ex.Message);
         }
     }
+
+    private void HandleMove(Player player, ClientMessage message)
+    {
+        switch (message.Content?.ToLower())
+        {
+            case "up":
+                player.Room?.HandleInput(player, Direction.Up);
+                break;
+            case "down":
+                player.Room?.HandleInput(player, Direction.Down);
+                break;
+            case "left":
+                player.Room?.HandleInput(player, Direction.Left);
+                break;
+            case "right":
+                player.Room?.HandleInput(player, Direction.Right);
+                break;
+        }
+    }
+    
     
     private async Task HandleJoin(WebSocketHandler webSocketHandler, ClientMessage message)
     {
@@ -57,35 +81,36 @@ public sealed class GameServer
             throw new Exception("Already joined");
         }
 
-        Player player = new Player(webSocketHandler,message.Content);
+        var nickName = message.Content ?? "guest"; 
+        
+        Player player = new Player(webSocketHandler,nickName);
         
         _players.Add(webSocketHandler,player);
         await AddToWaitList(player);
     }
     
-    private async Task HandleMessage(WebSocketHandler webSocketHandler, ClientMessage message)
+    private async Task HandleMessage(Player sender, ClientMessage message)
     {
-        var sender = _players.FirstOrDefault(k => k.Key == webSocketHandler).Value;
-        var recievers =  _players.Keys.Where(key => key != webSocketHandler);
+        var recievers =  _players.Values.Where(entity => entity != sender);
         var serverMessage = new ServerMessage
         {
-            Type = ServerMessageType.PLAYERMESSAGE,
+            Type = ServerMessageType.PlayerMessage,
             Content =  sender.Name+ " : " + message.Content,
         };
         foreach (var reciever in recievers)
         {
             //if(reciever.isOpen)
-            await reciever.SendMessageAsync(serverMessage);
+            await reciever.Handler.SendMessageAsync(serverMessage);
         }
     }
 
     private async Task AddToWaitList(Player player)
     {
         _waitlist.Add(player);
-        TryMatch();
+        await TryMatch();
     }
 
-    private async Task TryMatch()
+    private Task TryMatch()
     {
         while (_waitlist.Count >= 2 )
         {
@@ -94,29 +119,53 @@ public sealed class GameServer
             Player p2 = _waitlist.First();
             _waitlist.RemoveAt(0);
 
+            Console.WriteLine($"Matching: {p1} + {p2}");
+            
             GameRoom newRoom = new GameRoom(p1, p2);
-            _gamerooms.Add(newRoom);
+            lock (_gameRooms)
+            {
+                p1.Room = newRoom;
+                p2.Room = newRoom;
+                _gameRooms.Add(newRoom);
+            }
 
             _ = Task.Run(async () =>
             {
-                await p1.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GAMEJOIN });
-                await p2.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GAMEJOIN });
-                await newRoom.StartGame();
+                try
+                {
+                    await p1.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameJoin });
+                    await p2.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameJoin });
+                    await newRoom.StartGame();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ERROR in Task.Run: {ex.Message}");
+                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                }
+
             });
         }
+
+        return Task.CompletedTask;
     }
 
-    private async Task HandleQuit(WebSocketHandler webSocketHandler)
+    private async Task HandleQuit(Player player)
     {
-        if (!_players.TryGetValue(webSocketHandler, out var player))
-        {
-            webSocketHandler.SendErrorAsync("Join first");
-        }
-        
+        _waitlist.Remove(player);
+        _players.Remove(player.Handler);
+        await player.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.Quit });
     }
 
     public async Task EndGame(GameRoom gameRoom)
     {
         
+    }
+
+    public void RemoveGameRoom(GameRoom gameRoom)
+    {
+        lock (_gameRooms)
+        {
+            _gameRooms.Remove(gameRoom);
+        }
     }
 }
