@@ -3,8 +3,6 @@ using server.Server;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
-
 app.Map("/ws", async context =>
 {
     if (context.WebSockets.IsWebSocketRequest)
