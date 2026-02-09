@@ -25,14 +25,14 @@ public class GameRoom(Player p1, Player p2)
         _game.GenerateMap();
         _game.InitializeSnakes();
 
-        _gameTimer = new Timer(Update, null, 0, 100);
+        _gameTimer = new Timer(Update, null, 0, 2000);
     }
 
     private void Update(object? state)
     {
         if (_gameover) return;
 
-        _game.Update(_p1Direction, _p2Direction);
+        _game.Update();
         
         _ = Task.Run(async () =>
         {

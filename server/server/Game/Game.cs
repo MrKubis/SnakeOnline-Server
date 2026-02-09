@@ -30,6 +30,7 @@ public class Game
         _height = height;
         _width = width;
     }
+    
 
     public void GenerateMap()
     {
@@ -100,19 +101,19 @@ public class Game
         }
         _map[selectedY][selectedX] = CellType.Fruit;
     }
-    public void Update(Direction p1Direction, Direction p2Direction)
+    
+    public void Update()
     {
-        _p1Direction = p1Direction;
-        _p2Direction = p2Direction;
-        
         if (CheckBoundaries(_snake1, _p1Direction))
         {
-            GameOver(_p1);
+            GameOver(winner:_p2);
+            Console.WriteLine("Out of bounds for p1");
             return;
         }
         if (CheckBoundaries(_snake2, _p2Direction))
         {
-            GameOver(_p2);
+            Console.WriteLine("Out of bounds for p2");
+            GameOver(winner:_p1);
             return;
         }
 
@@ -174,7 +175,7 @@ public class Game
                 if (snake.First().X - 1 < 0) return true;
                 break;
             case Direction.Right:
-                if (snake.First().Y + 1 > _width - 1) return true;
+                if (snake.First().X + 1 > _width - 1) return true;
                 break;        
         }
         return false;
@@ -199,19 +200,22 @@ public class Game
             && !IsSamePosition(nextPos1, snake1[^1])
             && !IsSamePosition(nextPos1, snake2[^1]))
         {
+            Console.WriteLine("p1 crashed on p2");
             GameOver(p1);
         }
         if (_map[nextPos2.Y][nextPos2.X] == CellType.Snake
             && !IsSamePosition(nextPos2, snake1[^1])
             && !IsSamePosition(nextPos2, snake2[^1]))
         {
+            Console.WriteLine("p2 crashed on p1");
+
             GameOver(p2);
         }
     }
 
-    private void GameOver(Player? player)
+    private void GameOver(Player? winner)
     {
-        _winner = player;
+        _winner = winner;
         _gameover = true;
     }
     private bool IsSamePosition(SnakeBody s1, SnakeBody s2)
@@ -283,10 +287,12 @@ public class Game
     {
         if (_p1 == player)
         {
+            Console.WriteLine("Changing direction for p1");
             _p1Direction = direction;
         }
         else if(_p2 == player)
         {
+            Console.WriteLine("Changing direction for p2");
             _p2Direction = direction;
         }
     }

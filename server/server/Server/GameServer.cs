@@ -56,8 +56,10 @@ public sealed class GameServer
 
     private void HandleMove(Player player, ClientMessage message)
     {
+        Console.WriteLine(message.Content?.ToLower());
         switch (message.Content?.ToLower())
         {
+            
             case "up":
                 player.Room?.HandleInput(player, Direction.Up);
                 break;
