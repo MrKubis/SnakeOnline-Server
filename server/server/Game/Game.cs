@@ -8,15 +8,15 @@ public class Game
     private Player? _winner = null;
     private bool _gameover = false;
 
-    private readonly Player _p1;
-    private readonly Player _p2;
+    private Player? _p1;
+    private Player? _p2;
     private Direction _p1Direction;
     private Direction _p2Direction;
     
     private List<SnakeBody> _snake1;
     private List<SnakeBody> _snake2;
     private readonly Random _random;
-    private CellType[][] _map { get; set; }
+    private CellType[][]? _map { get; set; }
     private int _width;
     private int _height;
     
@@ -103,6 +103,7 @@ public class Game
     
     public void Update()
     {
+        if (_gameover) return;
         if (CheckBoundaries(_snake1, _p1Direction))
         {
             GameOver(winner:_p2);
@@ -213,6 +214,7 @@ public class Game
 
     private void GameOver(Player? winner)
     {
+        Console.WriteLine("game over");
         _winner = winner;
         _gameover = true;
     }
@@ -320,6 +322,25 @@ public class Game
             result += "\n";
         }
         return result;
+    }
+
+    public void CleanUp()
+    {
+        if (_map != null)
+        {
+            for (int i = 0; i < _map.Length; i++)
+            {
+                _map[i] = null;
+            }
+            _map = null;
+        }
+
+        _p1 = null;
+        _p2 = null;
+        _snake1?.Clear();
+        _snake2?.Clear();
+        _snake1 = null;
+        _snake2 = null;
     }
 }
 public enum Direction

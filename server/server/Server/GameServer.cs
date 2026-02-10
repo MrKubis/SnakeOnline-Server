@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using server.Game;
 using server.Model;
 
@@ -112,7 +113,7 @@ public sealed class GameServer
         await TryMatch();
     }
 
-    private Task TryMatch()
+    private async Task TryMatch()
     {
         while (_waitlist.Count >= 2 )
         {
@@ -122,52 +123,71 @@ public sealed class GameServer
             _waitlist.RemoveAt(0);
 
             Console.WriteLine($"Matching: {p1} + {p2}");
-            
-            GameRoom newRoom = new GameRoom(p1, p2);
-            lock (_gameRooms)
-            {
-                p1.Room = newRoom;
-                p2.Room = newRoom;
-                _gameRooms.Add(newRoom);
-            }
 
-            _ = Task.Run(async () =>
+            using (var newRoom = new GameRoom(p1, p2))
             {
+                
+                var cts = new CancellationTokenSource();
+
                 try
-                {
+                { 
                     await p1.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameJoin });
                     await p2.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameJoin });
-                    await newRoom.StartGame();
+
+                await newRoom.StartGame();
+                while (!newRoom.GameOver && !cts.IsCancellationRequested)
+                {
+                    await newRoom.GameLoopAsync(cts.Token);
+                }
+                    
                 }
                 catch (Exception ex)
                 {
+                    await RemoveGameRoom(newRoom);
                     Console.WriteLine($"ERROR in Task.Run: {ex.Message}");
                     Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 }
-
-            });
+                // Dodaj to do TryMatch() po finally:
+                finally
+                {
+                    cts?.Cancel();
+                    cts?.Dispose();
+                    await RemoveGameRoom(newRoom);
+                }
+            }
         }
-
-        return Task.CompletedTask;
     }
 
-    private async Task HandleQuit(Player player)
+    public async Task HandleQuit(Player player)
     {
+        if (player.Room != null)
+        {
+            await RemoveGameRoom(player.Room);
+        }
         _waitlist.Remove(player);
         _players.Remove(player.Handler);
         await player.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.Quit });
     }
 
-    public async Task EndGame(GameRoom gameRoom)
+    public async Task RemoveGameRoom(GameRoom gameRoom)
     {
-        
-    }
 
-    public void RemoveGameRoom(GameRoom gameRoom)
-    {
+        if (gameRoom._p1 != null)
+        {
+            gameRoom._p1.Room = null;
+
+        }
+
+        if (gameRoom._p2 != null)
+        {
+            gameRoom._p2.Room = null;
+        }
+            
+        gameRoom.Dispose();
         lock (_gameRooms)
         {
             _gameRooms.Remove(gameRoom);
         }
+        
     }
 }

@@ -11,7 +11,7 @@ public enum ServerMessageType
     GameJoin,
     GameStart,
     GameStop,
-    BoardUpdate,
+    MapUpdate,
     Message,
     Error,
     Quit

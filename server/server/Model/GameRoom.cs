@@ -3,53 +3,64 @@ using server.Server;
 
 namespace server.Model;
 
-public class GameRoom(Player p1, Player p2)
+public class GameRoom(Player p1, Player p2): IDisposable
 {
-    public readonly Player _p1 = p1;
-    public readonly Player _p2 = p2;
-
+    public Player? _p1 = p1;
+    public Player? _p2 = p2;
+    
     private Direction _p1Direction = Direction.Up;
     private Direction _p2Direction = Direction.Up;
     
-    private bool _gameover = false;
-    private Game.Game _game;
-    private Timer _gameTimer { get; set; }
+    private Task? _gameLoopTask;
+    
+    private bool _disposed;
+    public bool GameOver { get; set; }
+    private Game.Game? _game;
     public async Task StartGame()
     {
         await _p1.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameStart });
         await _p2.Handler.SendMessageAsync(new ServerMessage { Type = ServerMessageType.GameStart });
 
-        //ffff
         _game = new Game.Game(_p1,_p2,20,20);
         _game.GenerateMap();
         _game.InitializeSnakes();
         _game.InitializeFruits();
         
-        _gameTimer = new Timer(Update, null, 0, 2000);
+        Console.WriteLine("starting game");
+        
     }
 
-    private void Update(object? state)
+    public async Task GameLoopAsync(CancellationToken cancellationToken)
     {
-        if (_gameover) return;
-
-        _game.Update();
-        
-        _ = Task.Run(async () =>
+        Console.WriteLine("Starting game loop");
+        try
         {
-            try
+            while (!cancellationToken.IsCancellationRequested && !GameOver)
             {
+                if (GameOver || _disposed) return;
+
+                _game.Update();
                 await SendMapAsync(_p1);
                 await SendMapAsync(_p2);
+
+                if (_game.CheckGameOver(out var winner))
+                {
+                    await EndGame(winner);
+                }
+                await Task.Delay(100, cancellationToken);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error sending map: {ex.Message}");
-            }
-        });
-        if (_game.CheckGameOver(out var winner))
-        {
-            EndGame(winner).Wait();
+
         }
+        catch (OperationCanceledException)
+        {
+            var gameServer = GameServer.GetInstance();
+            await gameServer.RemoveGameRoom(this); 
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending map: {ex.Message}");
+        }
+
     }
 
     private async Task SendMapAsync(Player player)
@@ -58,15 +69,18 @@ public class GameRoom(Player p1, Player p2)
         await player.Handler.SendMessageAsync(
             new ServerMessage
             {
-                Type = ServerMessageType.GameStart,
+                Type = ServerMessageType.MapUpdate,
                 Content = response
             });
     }
 
     private async Task EndGame(Player? winner)
     {
-        _gameover = true;
-        _gameTimer.Dispose();
+        if(GameOver) return;
+        GameOver = true;
+
+        Console.WriteLine("Ending game");
+
         if (winner == null)
         {
             await p1.Handler.SendMessageAsync(new ServerMessage
@@ -109,18 +123,43 @@ public class GameRoom(Player p1, Player p2)
                     Content = "WIN"
                 });
             }
-
-            _p1.Room = null;
-            _p2.Room = null;
-            var gameServer = GameServer.GetInstance();
-            gameServer.RemoveGameRoom(this);
         }
     }
-
+    
     public void HandleInput(Player player, Direction direction)
     {
         _game.HandleInput(player,direction);
     }
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+        
+        _game?.CleanUp();
+        _game = null;
+        _disposed = true;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _game?.CleanUp();
+        _game = null;
+
+        if (_p1 != null)
+        {
+            _p1.Room = null;
+            _p1 = null;
+        }
+        if (_p2 != null)
+        {
+            _p2.Room = null;
+            _p2 = null;
+        }
+        _disposed = true;
+
+    }
+
 }
 
 
