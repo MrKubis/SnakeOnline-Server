@@ -1,3 +1,4 @@
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using server.Game;
 using server.Model;
@@ -111,6 +112,8 @@ public sealed class GameServer
     {
         _waitlist.Add(player);
         await TryMatch();
+
+
     }
 
     private async Task TryMatch()
@@ -155,6 +158,8 @@ public sealed class GameServer
                     await RemoveGameRoom(newRoom);
                 }
             }
+            await HandleQuit(p1);
+            await HandleQuit(p2);
         }
     }
 

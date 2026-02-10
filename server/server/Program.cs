@@ -21,6 +21,4 @@ app.Map("/ws", async context =>
     }
 });
 app.UseWebSockets();
-
-
 app.Run();
