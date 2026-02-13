@@ -7,6 +7,7 @@ public class ServerMessage
 }
 public enum ServerMessageType
 {
+    AckJoin,
     PlayerMessage,
     GameJoin,
     GameStart,

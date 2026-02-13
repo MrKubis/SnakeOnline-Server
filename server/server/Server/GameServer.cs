@@ -89,6 +89,7 @@ public sealed class GameServer
         
         Player player = new Player(webSocketHandler,nickName);
         
+        player.Handler.SendMessageAsync(new ServerMessage{Type = ServerMessageType.AckJoin,Content=nickName});
         _players.Add(webSocketHandler,player);
         await AddToWaitList(player);
     }
@@ -112,8 +113,6 @@ public sealed class GameServer
     {
         _waitlist.Add(player);
         await TryMatch();
-
-
     }
 
     private async Task TryMatch()
@@ -129,6 +128,8 @@ public sealed class GameServer
 
             using (var newRoom = new GameRoom(p1, p2))
             {
+                p2.Room = newRoom;
+                p1.Room = newRoom;
                 
                 var cts = new CancellationTokenSource();
 
