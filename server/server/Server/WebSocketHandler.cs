@@ -1,6 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Connections;
 using server.Model;
 
 namespace server.Server;
@@ -13,32 +14,51 @@ public class WebSocketHandler
     {
         _webSocket = webSocket;
     }
-    
-public async Task HandleAsync()
+
+    public async Task HandleAsync()
     {
-        while (_webSocket.State == WebSocketState.Open)
+        var buffer = new byte[1024 * 4];
+
+        try
         {
-            try
-            {
-                var buffer = new byte[1024 * 4];
-                var result = await _webSocket.ReceiveAsync(buffer, CancellationToken.None);
 
-                if (result.MessageType == WebSocketMessageType.Close)
+            while (_webSocket.State == WebSocketState.Open)
+            {
+                try
                 {
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    var result = await _webSocket.ReceiveAsync(buffer, CancellationToken.None);
+
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    }
+
+                    var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var message = JsonSerializer.Deserialize<ClientMessage>(json);
+
+                    GameServer gameServer = GameServer.GetInstance();
+
+                    gameServer.HandlePlayer(this, message);
+
                 }
-
-                var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                var message = JsonSerializer.Deserialize<ClientMessage>(json);
-
-                GameServer gameServer = GameServer.GetInstance();
-
-                gameServer.HandlePlayer(this, message);
+                catch (Exception ex)
+                {
+                    await SendErrorAsync(ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                await SendErrorAsync(ex.Message);
-            }
+            GameServer gs = GameServer.GetInstance();
+
+            gs.RemoveWebSocketHandler(this);
+
+        }
+        catch (WebSocketException ex)
+        {
+            
+            GameServer gameServer = GameServer.GetInstance();
+
+            gameServer.RemoveWebSocketHandler(this);
+            
+            Console.WriteLine(ex.GetType().Name);
         }
     }
 

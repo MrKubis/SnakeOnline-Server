@@ -196,4 +196,10 @@ public sealed class GameServer
         }
         
     }
+
+    public void RemoveWebSocketHandler(WebSocketHandler webSocketHandler)
+    {
+        _waitlist.Remove(_players[webSocketHandler]);
+        _players.Remove(webSocketHandler);
+    }
 }
