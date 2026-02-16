@@ -27,7 +27,6 @@ public class GameRoom(Player p1, Player p2): IDisposable
         _game.InitializeFruits();
         
         Console.WriteLine("starting game");
-        
     }
 
     public async Task GameLoopAsync(CancellationToken cancellationToken)

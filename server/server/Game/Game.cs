@@ -5,6 +5,12 @@ namespace server.Game;
 
 public class Game
 {
+    private const int empty = 0;
+    private const int fruit = 1;
+    private const int snake = 2;
+    
+    //To distinct player we simply mark them as 2 + i, i for each player
+    
     private Player? _winner = null;
     private bool _gameover = false;
 
@@ -16,7 +22,7 @@ public class Game
     private List<SnakeBody> _snake1;
     private List<SnakeBody> _snake2;
     private readonly Random _random;
-    private CellType[][]? _map { get; set; }
+    private int[][]? _map { get; set; }
     private int _width;
     private int _height;
     
@@ -34,13 +40,13 @@ public class Game
 
     public void GenerateMap()
     {
-        _map = new CellType[_height][];
+        _map = new int[_height][];
         for (int i = 0; i < _height; i++)
         {
-            _map[i] = new CellType[_width];
+            _map[i] = new int[_width];
             for (int j = 0; j < _width; j++)
             {
-                _map[i][j] = CellType.Empty;
+                _map[i][j] = empty;
             }
         }
     }
@@ -75,8 +81,8 @@ public class Game
         
         int x2 = _random.Next(_width/2, _width);
         int y2 = _random.Next(0, _height);
-        _map[y1][x1] = CellType.Fruit; 
-        _map[y2][x2] = CellType.Fruit; 
+        _map[y1][x1] = fruit; 
+        _map[y2][x2] = fruit; 
     }
     public void InitializeFruit()
     {
@@ -87,7 +93,7 @@ public class Game
         {
             for (int y = 0; y < _width; y++)
             {
-                if (_map[x][y] == CellType.Empty)
+                if (_map[x][y] == empty)
                 {
                     count++;
                     if (_random.Next(0, count) == 0)
@@ -98,7 +104,7 @@ public class Game
                 }
             }
         }
-        _map[selectedY][selectedX] = CellType.Fruit;
+        _map[selectedY][selectedX] = fruit;
     }
     
     public void Update()
@@ -146,16 +152,16 @@ public class Game
         switch (direction)
         {
             case Direction.Up:
-                if (_map [snake.First().Y - 1] [snake.First().X] == CellType.Fruit) return true;
+                if (_map [snake.First().Y - 1] [snake.First().X] == fruit) return true;
                 break;
             case Direction.Down:
-                if (_map [snake.First().Y + 1] [snake.First().X] == CellType.Fruit) return true;
+                if (_map [snake.First().Y + 1] [snake.First().X] == fruit) return true;
                 break;            
             case Direction.Left:
-                if (_map [snake.First().Y] [snake.First().X - 1] == CellType.Fruit) return true;
+                if (_map [snake.First().Y] [snake.First().X - 1] == fruit) return true;
                 break;
             case Direction.Right:
-                if (_map [snake.First().Y] [snake.First().X + 1] == CellType.Fruit) return true;
+                if (_map [snake.First().Y] [snake.First().X + 1] == fruit) return true;
                 break;        
         }
         return false;
@@ -195,14 +201,14 @@ public class Game
             GameOver(null);
         }
 
-        if (_map[nextPos1.Y][nextPos1.X] == CellType.Snake
+        if (_map[nextPos1.Y][nextPos1.X] >= snake
             && !IsSamePosition(nextPos1, snake1[^1])
             && !IsSamePosition(nextPos1, snake2[^1]))
         {
             Console.WriteLine("p1 crashed on p2");
             GameOver(p1);
         }
-        if (_map[nextPos2.Y][nextPos2.X] == CellType.Snake
+        if (_map[nextPos2.Y][nextPos2.X] >= snake
             && !IsSamePosition(nextPos2, snake1[^1])
             && !IsSamePosition(nextPos2, snake2[^1]))
         {
@@ -241,24 +247,34 @@ public class Game
     private void EatFruit(List<SnakeBody> snake)
     {
         var head = snake.First();
-        _map[head.Y][head.X] = CellType.Empty;
+        _map[head.Y][head.X] = empty;
     }
     
     private void GrowSnake(List<SnakeBody> snake, int lastX, int lastY)
     {
+        int index = 0;
+        if (snake == _snake2)
+        {
+            index++;
+        }
         snake.Add(new SnakeBody{X = lastX, Y = lastY});
-        _map[lastY][lastX] = CellType.Snake;
+        _map[lastY][lastX] = Game.snake + index;
     }
 
     private void Move(List<SnakeBody> snake, Direction direction)
     {
-        _map[snake[0].Y][snake[0].X] = CellType.Empty;
-        _map[snake[^1].Y][snake[^1].X] = CellType.Empty;
+        int index = 0;
+        if (snake == _snake2)
+        {
+            index++;
+        }
+        _map[snake[0].Y][snake[0].X] = empty;
+        _map[snake[^1].Y][snake[^1].X] = empty;
         for (int i = snake.Count - 1; i >= 1; i--)
         {
             snake[i].X = snake[i - 1].X;
             snake[i].Y = snake[i - 1].Y;
-            _map[snake[i].Y][snake[i].X] = CellType.Snake;
+            _map[snake[i].Y][snake[i].X] = Game.snake + index;
         }
 
         switch (direction)
@@ -276,7 +292,7 @@ public class Game
                 snake[0].X  += 1;
                 break;
         }
-        _map[snake[0].Y][snake[0].X] = CellType.Snake;
+        _map[snake[0].Y][snake[0].X] = Game.snake + index;
     }
 
     public bool CheckGameOver(out Player? winner)
@@ -306,16 +322,17 @@ public class Game
         {
             for (int j = 0; j < _width; j++)
             {
+                if (_map[i][j] >= snake)
+                {
+                    result += _map[i][j];
+                }
                 switch (_map[i][j])
                 {
-                    case CellType.Fruit:
+                    case fruit:
                         result += "F";
                         break;
-                    case CellType.Empty:
+                    case empty:
                         result += "0";
-                        break;
-                    case CellType.Snake:
-                        result += "S";
                         break;
                 }
             }
@@ -349,11 +366,5 @@ public enum Direction
     Down,
     Left,
     Right
-}
-public enum CellType
-{
-    Empty,
-    Snake,
-    Fruit
 }
 
