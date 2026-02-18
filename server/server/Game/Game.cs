@@ -63,6 +63,7 @@ public class Game
             Y = y1
         };
         _snake1.Add(head1);
+        _map[y1][x1] = 2; 
         
         int x2 = _width - 2;
         int y2 = _height/2;
@@ -72,6 +73,8 @@ public class Game
             Y = y2
         };
         _snake2.Add(head2);
+        _map[y2][x2] = 3; 
+
     }
 
     public void InitializeFruits()
@@ -329,7 +332,7 @@ public class Game
                 switch (_map[i][j])
                 {
                     case fruit:
-                        result += "F";
+                        result += "1";
                         break;
                     case empty:
                         result += "0";

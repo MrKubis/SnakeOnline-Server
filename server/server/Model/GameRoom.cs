@@ -25,7 +25,11 @@ public class GameRoom(Player p1, Player p2): IDisposable
         _game.GenerateMap();
         _game.InitializeSnakes();
         _game.InitializeFruits();
+
+        await SendMapAsync(_p1);
+        await SendMapAsync(_p2);
         
+        await Task.Delay(3000, CancellationToken.None);
         Console.WriteLine("starting game");
     }
 
@@ -64,7 +68,7 @@ public class GameRoom(Player p1, Player p2): IDisposable
 
     private async Task SendMapAsync(Player player)
     {
-        string response = _game.ConvertMapToString();
+        var response = _game.ConvertMapToString();
         await player.Handler.SendMessageAsync(
             new ServerMessage
             {

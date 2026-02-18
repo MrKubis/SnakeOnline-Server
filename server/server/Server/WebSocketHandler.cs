@@ -64,7 +64,7 @@ public class WebSocketHandler
 
     public async Task SendMessageAsync(ServerMessage serverMessage)
     {
-        var json = JsonSerializer.Serialize(serverMessage);
+        var json = serverMessage.ToJson();
         var bytes = Encoding.UTF8.GetBytes(json);
         if (_webSocket.State == WebSocketState.Open)
         {
